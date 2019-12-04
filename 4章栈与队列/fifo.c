@@ -1,7 +1,8 @@
-#include "stdio.h"    
-#include "stdlib.h"   
+#include <stdio.h>
+#include <stdlib.h>   
+#include <string.h>
+
 #include "fifo.h"   
-#include "string.h"
 
 static SqQueue SQ;
 
@@ -12,7 +13,7 @@ static SqQueue SQ;
 #endif
 
 
-Status InitQueue(SqQueue *Q)
+int InitQueue(SqQueue *Q)
 {
 	Q->front=0;
 	Q->rear=0;	
@@ -24,16 +25,16 @@ int QueueLength(SqQueue Q)
 	return	(Q.rear-Q.front+MAXSIZE)%MAXSIZE;
 }
 
-Status QueueEmpty(SqQueue Q)
+int QueueEmpty(SqQueue Q)
 { 
-	if(Q.front==Q.rear) /* 闃熷垪绌虹殑鏍囧織 */
+	if(Q.front==Q.rear) 
 		return TRUE;
 	else
 		return FALSE;
 }
 
 
-Status GetHead(SqQueue Q,QElemType *e)
+int GetHead(SqQueue Q,QElemType *e)
 {
 	if(Q.front==Q.rear) /* 队列空 */
 		return ERROR;
@@ -41,7 +42,7 @@ Status GetHead(SqQueue Q,QElemType *e)
 	return OK;
 }
 
-Status EnQueue(SqQueue *Q,QElemType e)
+int EnQueue(SqQueue *Q,QElemType e)
 {
 	if ((Q->rear+1)%MAXSIZE == Q->front)	/* 队列满的判断 */
 		return	ERROR;
@@ -50,7 +51,7 @@ Status EnQueue(SqQueue *Q,QElemType e)
 	return  OK;
 }
 
-Status DeQueue(SqQueue *Q,QElemType *e)
+int DeQueue(SqQueue *Q,QElemType *e)
 {
 	if (Q->front == Q->rear)				/* 队列空的判断 */
 		return ERROR;
@@ -59,7 +60,7 @@ Status DeQueue(SqQueue *Q,QElemType *e)
 	return OK;
 }
 
-Status AddQueue(SqQueue *Q,QElemType e)
+int AddQueue(SqQueue *Q,QElemType e)
 {
 	if ((Q->rear+1)%MAXSIZE == Q->front)	/* 队列满的判断 */
 		return	ERROR;
@@ -69,39 +70,32 @@ Status AddQueue(SqQueue *Q,QElemType e)
 }
 
 
-int queue_in(QElemType e)
-{
-	return EnQueue(&SQ, e);
-}
 
-int queue_out(QElemType *e)
-{
-	return DeQueue(&SQ, e);
-}
 
 int queue_empty(void)
 {
 	return QueueEmpty(SQ);
 }
 
-int queue_not_full(void)
+
+void ext_init(unsigned char *buf, unsigned int len)
 {
-	if ((SQ.rear+1)%MAXSIZE == SQ.front)	
-		return	ERROR;
-	else
-		return	OK;
+	int i;
+	for(i=0; i< MAXSIZE; i++)
+	{
+		SQ.data[i].msg= &SQ.msgbuf[i*MAX_MSG_DATA_LEN];
+	}
+
+	int num= len/LOG_LEN;
+	
+	printf("old log numb=%d\n", num);
+	if(num && buf){
+		for(i=num-1; i>=0; i--){
+			queue_add(&buf[i*LOG_LEN], LOG_LEN);
+		}
+	}
+	printf("old add ok\n");
 }
-
-
-
-
-QElemType* queue_get_tail(void)
-{
-	if ((SQ.rear+1)%MAXSIZE == SQ.front)	
-		return	NULL;
-	return &SQ.data[SQ.rear];
-}
-
 
 
 void queue_init(void)
@@ -110,90 +104,36 @@ void queue_init(void)
 }
 
 
-
-int queue_add(QElemType e)
+int queue_add(unsigned char *data, unsigned char len)
 {
+	QElemType *p_msg;
 	if ((SQ.rear+1)%MAXSIZE == SQ.front)
-#if 1
-	SQ.front=(SQ.front+1)%MAXSIZE;	
-#else
-	return	ERROR;
-#endif
-	SQ.data[SQ.rear]=e;						
+		SQ.front=(SQ.front+1)%MAXSIZE;	
+	p_msg= &SQ.data[SQ.rear];	
+	memcpy(p_msg->msg, data, len);
+	p_msg->msg_len= len;
 	SQ.rear=(SQ.rear+1)%MAXSIZE;
 	return  OK;
 }	
 
-#if 0
-int QueueTraverse(struct squeue p_sq)
-{ 
-	int i;
-	i=p_sq.head;
-	while((i+p_sq.head)!=p_sq.tail)
-	{
-		printf("%d \n", p_sq.data[i]);
-		i=(i+1)%MAXSIZE;
-	}
-	printf("\n");
-	return OK;
-}
-#endif
 
-#if 0
-void queue_visit(void)
-{ 
-	int i,len,idx;
-	len= QueueLength(SQ);
-	for(i=0; i< len; i++){
-		idx= (i+ SQ.front)%MAXSIZE;
-		printf("%d ", SQ.data[idx]);
+extern int parse_log_str(unsigned char *buf, unsigned char len);
 
-	}
-	printf("\n");
-}
-#else
-void queue_visit(void)
+void queue_visit(int (*parse_fun)(unsigned char*, unsigned char))
 { 
+	QElemType *p_msg;
 	int i,len,idx;
 	len= QueueLength(SQ);
 	for(i=0; i< len; i++){
 		idx= (SQ.rear+MAXSIZE-1-i)%MAXSIZE;
-		printf("%d ", SQ.data[idx]);
-
+		p_msg= &SQ.data[idx];	
+		parse_fun(p_msg->msg, p_msg->msg_len);
 	}
-	printf("\n");
+	printf("\n\n");
 }
 
-#endif
 
 
-int main(void )
-{
-	int max=10;
-	int i=0;
-	queue_init();
-	for(; i< 10; i++){
-		if(ERROR == queue_add(i))
-			printf("fifo is full at %d\n", i);
-	}
-
-	queue_visit();
-
-while(1){
-
-	sleep(2);
-	for(i=0 ; i< 5; i++){
-		if(ERROR == queue_add(max++))
-			printf("fifo is full at %d\n", i);
-	}
-
-	queue_visit();
-
-}
-
-	
-	return 0;
-}
 
 
 

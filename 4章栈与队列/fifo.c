@@ -81,10 +81,6 @@ int queue_empty(void)
 void ext_init(unsigned char *buf, unsigned int len)
 {
 	int i;
-	for(i=0; i< MAXSIZE; i++)
-	{
-		SQ.data[i].msg= &SQ.msgbuf[i*MAX_MSG_DATA_LEN];
-	}
 
 #if 1
 	int num= len/LOG_LEN;
@@ -102,7 +98,12 @@ void ext_init(unsigned char *buf, unsigned int len)
 
 void queue_init(void)
 {
+	int i;
 	InitQueue(&SQ);
+	for(i=0; i< MAXSIZE; i++)
+	{
+		SQ.data[i].msg= &SQ.msgbuf[i*MAX_MSG_DATA_LEN];
+	}
 }
 
 

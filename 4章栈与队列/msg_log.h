@@ -5,7 +5,6 @@
 
 #define LOG_LEN sizeof(struct msg_log)
 
-
 struct sys_time{
 	unsigned char year;
 	unsigned char mon;

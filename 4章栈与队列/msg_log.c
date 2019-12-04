@@ -66,26 +66,45 @@ int parse_log_str(unsigned char *buf, unsigned char len)
 
 
 
-#if 1
-//int sync_log_str(unsigned char *buf, unsigned char len)
-//{
-//	log_direct_write((unsigned char*)buf, len);
-//	return 0;
-//}
-#else
-int sync_log_str(unsigned char *buf, unsigned char len)
-{
-	log_direct_write((unsigned char*)buf, len);
-	return 0;
-}
-#endif
 
 #define MSG_LOG_PRINT() queue_visit(parse_log_str)
+
+
+#if 1
+static unsigned char *log= NULL;
+
+static int sync_log_str(unsigned char *buf, unsigned char len)
+{
+	struct log_file *plog= (struct log_file*)log;
+	memcpy(&plog->data[plog->file_len], buf, len);
+	plog->file_len+= len;
+	return 0;
+}
 
 #define MSG_LOG_SYNC() queue_visit(sync_log_str)
 
 
 
+void sync_log_file(void)
+{
+	log= malloc(MAX_LOGFILE_lEN);
+	if(log == NULL){
+		printf("malloc log file faild\n");
+		return;
+	}
+	struct log_file *plog= (struct log_file*)log;
+	plog->file_len= 0;
+	plog->magic= LOG_FILE_MAGIC;
+	plog->version = LOG_FILE_VERSION;
+	MSG_LOG_SYNC();
+
+
+	log_direct_write(log, plog->file_len + LOGFILE_HEAD_LEN);
+	//log_write_bak(log, plog->file_len);
+	free(log);
+	log= NULL;
+}
+#else
 static unsigned char *log= NULL;
 static unsigned int log_len;
 
@@ -108,36 +127,61 @@ void sync_log_file(void)
 	log_len=0;
 	MSG_LOG_SYNC();
 	log_direct_write(log, log_len);
-	
+	log_write_bak(log, log_len);
 	free(log);
 	log= NULL;
 }
 
+#endif
 
 
-unsigned char rbuf[1024*10];
-int rlen=0;
 void log_init(void)
 {
-	rlen= read_file(rbuf, 1024*10);
+	unsigned char *tmpbuf;
+	struct log_file *plog;
+	int ret, read_len=0;
+	tmpbuf= malloc(MAX_LOGFILE_lEN + 1);//add 1
+	if(tmpbuf == NULL){
+		printf("err: log init malloc  faild\n");
+	}
+
+	
+	
+	read_len= read_log_file(tmpbuf, MAX_LOGFILE_lEN + 1);
+	if(read_len < LOGFILE_HEAD_LEN){
+		printf("file too short\n");
+		return;
+	}
+	
+	plog= (struct log_file*)tmpbuf;
+
+	if(plog->magic ==  LOG_FILE_MAGIC && plog->version == LOG_FILE_VERSION 
+			&& read_len <= MAX_LOGFILE_lEN)
+	{
+		printf("old log file len=%d\n", plog->file_len);
+		ext_init(plog->data, plog->file_len);
+	}
+	else{
+		clear_log_file();
+		printf("clear \n");
+	
+	}
 	
 }
 
 int main(void )
 {
 unsigned char id[6]={1,2,3,4,5,6};
-
 	static unsigned int ctl=0;
-
+	queue_init();
+	
 	log_file_open();
 	log_init();
 	
-	queue_init();
-	ext_init(rbuf, rlen);
 	MSG_LOG_PRINT();
 	
 	while(1){
-		usleep(500*1000);
+		usleep(1000*1000);
 		
 		add_new_log("test", 0, 1, 2, id);
 		id[5]++;
@@ -146,7 +190,6 @@ unsigned char id[6]={1,2,3,4,5,6};
 		if((ctl++)%1 == 0){
 			log_direct_lseek();
 			sync_log_file();
-			//MSG_LOG_SYNC();
 		}
 	}
 	

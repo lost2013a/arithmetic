@@ -12,7 +12,7 @@
 #define FALSE 0
 #endif
 
-#define MAXSIZE 10 /* 存储空间初始分配量 */
+#define MAXSIZE 5 /* 存储空间初始分配量 */
 
 #define MAX_MSG_DATA_LEN 30
 

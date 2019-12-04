@@ -60,11 +60,6 @@ void log_write_(unsigned char *p_dta, unsigned int dtalen)
 	write_flush();
 }
 
-void log_read(unsigned char *p_dta, unsigned int dtalen)
-{  	
-	write_file(p_dta, dtalen);
-	write_flush();
-}
 
 
 

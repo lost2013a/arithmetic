@@ -33,7 +33,8 @@ void read_time(struct sys_time *p_systime)
 int add_new_log(char *name, unsigned char emergency, unsigned char type, 
 	unsigned char ops, unsigned char *logic_id)
 {
-	unsigned char buf[LOG_LEN];
+	unsigned char buf[LOG_LEN]={0};
+	unsigned int name_len;
 	struct msg_log *plog;
 	plog= (struct msg_log *)buf;
 	read_time(&plog->t);
@@ -41,8 +42,12 @@ int add_new_log(char *name, unsigned char emergency, unsigned char type,
 	plog->type= type;
 	plog->ops= ops;
 	memcpy(plog->logic_id, logic_id, 6);
-	if(name != NULL)
-		strncpy(plog->name, name, MAX_lOGNAME_LEN);
+	name_len= strlen(name);
+	if(name_len  > MAX_lOGNAME_LEN-1)
+		name_len= MAX_lOGNAME_LEN-1;
+	memcpy(plog->name, name, name_len);
+	plog->name[name_len]= 0;
+	printf("name :%s\n", plog->name);
 	return queue_add(buf, LOG_LEN);
 }
 
@@ -60,36 +65,55 @@ int parse_log_str(unsigned char *buf, unsigned char len)
 }
 
 
-#if 1
+
+#if 0
+//int sync_log_str(unsigned char *buf, unsigned char len)
+//{
+//	log_direct_write((unsigned char*)buf, len);
+//	return 0;
+//}
+#else
 int sync_log_str(unsigned char *buf, unsigned char len)
 {
 	log_direct_write((unsigned char*)buf, len);
 	return 0;
 }
-#else
-int sync_log_str(unsigned char *buf, unsigned char len)
-{
-	char dbuf[256];
-	struct msg_log *plog;
-	struct sys_time *ptime;
-	plog= (struct msg_log *)buf;
-	ptime= &plog->t;
-	len= snprintf(dbuf, 256, "log: %02d-%02d-%02d, %02d:%02d:%02d ", ptime->year,  ptime->mon, ptime->day,
-		 ptime->hour, ptime->min, ptime->sec);
-	if(len ==256)
-		return 0;
-	len+= snprintf(&dbuf[len], 256-len, "%s, %d, %d , %d, %02x%02x%02x%02x%02x%02x\n", plog->name, plog->emergency, plog->type, plog->ops,
-		plog->logic_id[0], plog->logic_id[1], plog->logic_id[2], plog->logic_id[3], plog->logic_id[4], plog->logic_id[5]);
-
-	log_direct_write((unsigned char*)dbuf, len);
-	return 0;
-}
-
 #endif
 
 #define MSG_LOG_PRINT() queue_visit(parse_log_str)
 
 #define MSG_LOG_SYNC() queue_visit(sync_log_str)
+
+
+
+static unsigned char *log= NULL;
+static unsigned int log_len;
+
+//int sync_log_str(unsigned char *buf, unsigned char len)
+//{
+//	if(log != NULL){
+//		memcpy(&log[log_len], buf, len);
+//		log_len+= len;
+//	}
+//	return 0;
+//}
+
+void sync_log_file(void)
+{
+	log= malloc(MAX_LOGFILE_lEN);
+	if(log == NULL){
+		printf("malloc log file faild\n");
+		return;
+	}
+	log_len=0;
+	MSG_LOG_SYNC();
+	log_direct_write(log, log_len);
+	
+	free(log);
+	log= NULL;
+}
+
+
 
 unsigned char rbuf[1024*10];
 int rlen=0;
@@ -105,24 +129,24 @@ unsigned char id[6]={1,2,3,4,5,6};
 
 	static unsigned int ctl=0;
 
-	int i=0;
 	log_file_open();
 	log_init();
 	
 	queue_init();
 	ext_init(rbuf, rlen);
 	MSG_LOG_PRINT();
-	//while(1){}
+	
 	while(1){
-		sleep(2);
+		usleep(500*1000);
 		
 		add_new_log("test", 0, 1, 2, id);
 		id[5]++;
 		
 		MSG_LOG_PRINT();
-		if((ctl++)%3 == 0){
-			log_direct_lseek();
-			MSG_LOG_SYNC();
+		if((ctl++)%1 == 0){
+			//log_direct_lseek();
+			//sync_log_file();
+			//MSG_LOG_SYNC();
 		}
 	}
 	

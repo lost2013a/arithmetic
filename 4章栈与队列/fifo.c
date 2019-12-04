@@ -86,6 +86,7 @@ void ext_init(unsigned char *buf, unsigned int len)
 		SQ.data[i].msg= &SQ.msgbuf[i*MAX_MSG_DATA_LEN];
 	}
 
+#if 0
 	int num= len/LOG_LEN;
 	
 	printf("old log numb=%d\n", num);
@@ -95,6 +96,7 @@ void ext_init(unsigned char *buf, unsigned int len)
 		}
 	}
 	printf("old add ok\n");
+#endif
 }
 
 

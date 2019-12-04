@@ -14,7 +14,7 @@
 
 #define MAXSIZE 5 /* 存储空间初始分配量 */
 
-#define MAX_MSG_DATA_LEN 30
+#define MAX_MSG_DATA_LEN LOG_LEN
 
 typedef struct __comm_msg{
 	unsigned char msg_len;
@@ -30,7 +30,7 @@ typedef struct
 	int front;    	/* 头指针 */
 	int rear;		/* 尾指针，若队列不空，指向队列尾元素的下一个位置 */
 	QElemType data[MAXSIZE];
-	unsigned char msgbuf[MAXSIZE*LOG_LEN];
+	unsigned char msgbuf[MAXSIZE*MAX_MSG_DATA_LEN];
 }SqQueue;
 
 

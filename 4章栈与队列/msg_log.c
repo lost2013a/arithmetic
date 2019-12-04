@@ -66,7 +66,7 @@ int parse_log_str(unsigned char *buf, unsigned char len)
 
 
 
-#if 0
+#if 1
 //int sync_log_str(unsigned char *buf, unsigned char len)
 //{
 //	log_direct_write((unsigned char*)buf, len);
@@ -89,14 +89,14 @@ int sync_log_str(unsigned char *buf, unsigned char len)
 static unsigned char *log= NULL;
 static unsigned int log_len;
 
-//int sync_log_str(unsigned char *buf, unsigned char len)
-//{
-//	if(log != NULL){
-//		memcpy(&log[log_len], buf, len);
-//		log_len+= len;
-//	}
-//	return 0;
-//}
+int sync_log_str(unsigned char *buf, unsigned char len)
+{
+	if(log != NULL){
+		memcpy(&log[log_len], buf, len);
+		log_len+= len;
+	}
+	return 0;
+}
 
 void sync_log_file(void)
 {
@@ -144,8 +144,8 @@ unsigned char id[6]={1,2,3,4,5,6};
 		
 		MSG_LOG_PRINT();
 		if((ctl++)%1 == 0){
-			//log_direct_lseek();
-			//sync_log_file();
+			log_direct_lseek();
+			sync_log_file();
 			//MSG_LOG_SYNC();
 		}
 	}

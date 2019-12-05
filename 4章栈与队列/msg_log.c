@@ -15,6 +15,7 @@
 #include <malloc.h>
 
 
+
 static unsigned char init_ok=0;
 static pthread_mutex_t log_mutex;
 #define LOG_UNLOCK() 	pthread_mutex_unlock(&log_mutex)	
@@ -142,6 +143,7 @@ static unsigned int resolver_log(unsigned char *buf)
 }
 
 
+
 void sync_log_file(void)
 {
 	
@@ -156,7 +158,8 @@ void sync_log_file(void)
 	plog->version= LOG_FILE_VERSION;
 	plog->file_len=  resolver_log(plog->data);
 	plog->crc_val= EXTERN_CRC32_CAL(plog->data, plog->file_len);
-	log_direct_write((unsigned char*)plog, plog->file_len + LOGFILE_HEAD_LEN);
+	file_direct_write(DBG_FILE, (unsigned char*)plog, plog->file_len + LOGFILE_HEAD_LEN);
+	file_direct_write(DEV_LOG_BAK, (unsigned char*)plog, plog->file_len + LOGFILE_HEAD_LEN);
 	free(buf);
 }
 
@@ -168,23 +171,19 @@ static unsigned char _recover_log_file(const char* filename, struct log_file *pl
 	unsigned int crc_cal;
 	read_len= log_read_file(filename, (unsigned char*)plog, MAX_LOGFILE_lEN + 1);
 	if(read_len < LOGFILE_HEAD_LEN){
-		printf("file too short\n");
 		return 0;
 	}
 	crc_cal= EXTERN_CRC32_CAL(plog->data, plog->file_len);
-	printf("crc: %x / %x\n", crc_cal, plog->crc_val);
-
+	
 	if(plog->magic ==  LOG_FILE_MAGIC && plog->version == LOG_FILE_VERSION 
 			&& read_len <= MAX_LOGFILE_lEN && plog->crc_val == crc_cal)
 	{
-		printf("old log file len=%d\n", plog->file_len);
 		ext_init(plog->data, plog->file_len);
 		ret= 1;
 	}
 	else{
-		clear_log_file();
-		printf("clear \n");
-	
+		log_clear_breakfile(filename);
+		printf("log: clear break file %s\n", filename);
 	}
 	return ret;
 }
@@ -221,9 +220,7 @@ unsigned char id[6]={1,2,3,4,5,6};
 	static unsigned int ctl=0;
 	queue_init();
 	
-	log_file_open();
 	log_init();
-	
 	MSG_LOG_PRINT();
 	
 	while(1){
@@ -234,7 +231,6 @@ unsigned char id[6]={1,2,3,4,5,6};
 		
 		MSG_LOG_PRINT();
 		if((ctl++)%1 == 0){
-			log_direct_lseek();
 			sync_log_file();
 		}
 	}

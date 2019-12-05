@@ -2,6 +2,8 @@
 #define   _WRITE_LOG_H_
 
 #include "fifo.h" 
+#define DBG_FILE "write_log.txt"
+#define DEV_LOG_BAK "log.bak"
 
 
 #define MAX_LOGFILE_lEN sizeof(struct log_file)

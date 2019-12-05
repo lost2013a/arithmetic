@@ -11,6 +11,15 @@
 #include <unistd.h>
 
 
+#include <pthread.h>
+#include <malloc.h>
+
+
+static unsigned char init_ok=0;
+static pthread_mutex_t log_mutex;
+#define LOG_UNLOCK() 	pthread_mutex_unlock(&log_mutex)	
+#define LOG_LOCK		pthread_mutex_lock(&log_mutex)
+
 
 static const unsigned char crc_table[] =
 {
@@ -72,6 +81,8 @@ int add_new_log(char *name, unsigned char emergency, unsigned char type,
 	unsigned char buf[LOG_LEN]={0};
 	unsigned int name_len;
 	struct msg_log *plog;
+	if(1 != init_ok)
+		return -1;
 	plog= (struct msg_log *)buf;
 	read_time(&plog->t);
 	plog->emergency= emergency;
@@ -106,94 +117,60 @@ int parse_log_str(unsigned char *buf, unsigned char len)
 #define MSG_LOG_PRINT() queue_visit(parse_log_str)
 
 
-#if 1
-static unsigned char *log= NULL;
+static unsigned char *resolver_buf=NULL;
+static unsigned int resolver_len= 0;
+	
 
-static int sync_log_str(unsigned char *buf, unsigned char len)
+static int func_visit_logbuf(unsigned char *buf, unsigned char len)
 {
-	struct log_file *plog= (struct log_file*)log;
-	memcpy(&plog->data[plog->file_len], buf, len);
-	plog->file_len+= len;
+	if(resolver_buf){
+		memcpy(resolver_buf+ resolver_len, buf, len);
+		resolver_len+= len;
+	}
 	return 0;
 }
 
-#define MSG_LOG_SYNC() queue_visit(sync_log_str)
 
+static unsigned int resolver_log(unsigned char *buf)
+{
+	resolver_len=0;
+	if(NULL != buf){
+		resolver_buf= buf;
+		queue_visit(func_visit_logbuf);
+	}
+	return resolver_len;
+}
 
 
 void sync_log_file(void)
 {
-	log= malloc(MAX_LOGFILE_lEN);
-	if(log == NULL){
+	
+	unsigned char *buf= malloc(MAX_LOGFILE_lEN);
+	if(buf == NULL){
 		printf("malloc log file faild\n");
 		return;
 	}
-	struct log_file *plog= (struct log_file*)log;
+	struct log_file *plog= (struct log_file*)buf;
 	plog->file_len= 0;
 	plog->magic= LOG_FILE_MAGIC;
-	plog->version = LOG_FILE_VERSION;
-	
-	MSG_LOG_SYNC();
+	plog->version= LOG_FILE_VERSION;
+	plog->file_len=  resolver_log(plog->data);
 	plog->crc_val= EXTERN_CRC32_CAL(plog->data, plog->file_len);
-	
-	log_direct_write(log, plog->file_len + LOGFILE_HEAD_LEN);
-	//log_write_bak(log, plog->file_len);
-	free(log);
-	log= NULL;
-}
-#else
-static unsigned char *log= NULL;
-static unsigned int log_len;
-
-int sync_log_str(unsigned char *buf, unsigned char len)
-{
-	if(log != NULL){
-		memcpy(&log[log_len], buf, len);
-		log_len+= len;
-	}
-	return 0;
+	log_direct_write((unsigned char*)plog, plog->file_len + LOGFILE_HEAD_LEN);
+	free(buf);
 }
 
-void sync_log_file(void)
+
+static unsigned char _recover_log_file(const char* filename, struct log_file *plog)
 {
-	log= malloc(MAX_LOGFILE_lEN);
-	if(log == NULL){
-		printf("malloc log file faild\n");
-		return;
-	}
-	log_len=0;
-	MSG_LOG_SYNC();
-	log_direct_write(log, log_len);
-	log_write_bak(log, log_len);
-	free(log);
-	log= NULL;
-}
-
-#endif
-
-
-void log_init(void)
-{
-	unsigned char *tmpbuf;
+	unsigned char ret=0;
+	int read_len=0;
 	unsigned int crc_cal;
-	struct log_file *plog;
-	int ret, read_len=0;
-	tmpbuf= malloc(MAX_LOGFILE_lEN + 1);//add 1
-	if(tmpbuf == NULL){
-		printf("err: log init malloc  faild\n");
-	}
-
-	
-	
-	read_len= read_log_file(tmpbuf, MAX_LOGFILE_lEN + 1);
+	read_len= log_read_file(filename, (unsigned char*)plog, MAX_LOGFILE_lEN + 1);
 	if(read_len < LOGFILE_HEAD_LEN){
 		printf("file too short\n");
-		return;
+		return 0;
 	}
-	
-	plog= (struct log_file*)tmpbuf;
-
-
 	crc_cal= EXTERN_CRC32_CAL(plog->data, plog->file_len);
 	printf("crc: %x / %x\n", crc_cal, plog->crc_val);
 
@@ -202,12 +179,39 @@ void log_init(void)
 	{
 		printf("old log file len=%d\n", plog->file_len);
 		ext_init(plog->data, plog->file_len);
+		ret= 1;
 	}
 	else{
 		clear_log_file();
 		printf("clear \n");
 	
 	}
+	return ret;
+}
+
+
+
+
+
+
+void log_init(void)
+{
+	unsigned char *tmpbuf;
+	if (pthread_mutex_init(&log_mutex, NULL) != 0){
+		printf("err: log creat mutex faild\n"); 	
+	}
+	tmpbuf= malloc(MAX_LOGFILE_lEN + 1);//add 1
+	if(tmpbuf == NULL){
+		printf("err: log init malloc  faild\n");
+		return;
+	}
+	if(1 != _recover_log_file(DBG_FILE, (struct log_file*)tmpbuf)){
+		_recover_log_file(DEV_LOG_BAK, (struct log_file*)tmpbuf);
+	}
+		
+
+	free(tmpbuf);
+	init_ok=1;
 	
 }
 

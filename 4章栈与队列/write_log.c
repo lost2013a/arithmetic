@@ -6,8 +6,7 @@
 #include "write_log.h"
 
 
-#define DBG_FILE "write_log.txt"
-#define DEV_LOG_BAK "log.bak"
+
 
 #define max_dbg_len (1024*20)
 
@@ -26,12 +25,13 @@ int read_log_bak(unsigned char *buf, unsigned int len)
 void clear_file(const char *file)
 {
 	int fd=-1;
-	fd= open(file, O_TRUNC, 0x777); 
+	fd= open(file, O_TRUNC, 0x664); 
 	close(fd);
 }
 
 void clear_log_file(void)
 {
+	close(file_fd);
 	clear_file(DBG_FILE);
 }
 
@@ -42,7 +42,7 @@ void clear_log_bak(void)
 
 
 
-static volatile int file_fd=-1;
+static int file_fd=-1;
 
 static int write_file(unsigned char *buf, unsigned int len)
 {
@@ -98,12 +98,6 @@ int log_file_open(void)
 	return ret;
 }
 
-void log_file_close(void)
-{
-	close(file_fd);	
-}
-
-
 
 void log_write_(unsigned char *p_dta, unsigned int dtalen)
 {  	
@@ -128,18 +122,19 @@ void log_direct_write(unsigned char *p_dta, unsigned int dtalen)
 	}	
 }
 
-void log_write_bak(unsigned char *p_dta, unsigned int dtalen)
+void file_direct_write(const char *name, unsigned char *p_dta, unsigned int dtalen)
 {  	
-	const char *pfile= DEV_LOG_BAK;
 	int fd=-1;
-	fd= open(pfile, O_RDWR| O_CREAT, 0x664);  
+	fd= open(name, O_RDWR| O_CREAT, 0x664);  
 	if(fd < 0){
-		printf("err: %s file open failed\n", pfile);
+		printf("err: %s file open failed\n", name);
 		return;
 	}
 	
+	//lseek(file_fd, 0, SEEK_SET);
+	
 	if(write(fd, p_dta ,dtalen) < 0){
-		printf("err: %s file write failed\n", pfile);
+		printf("err: %s file write failed\n", name);
 		return;
 	}
 	fsync(fd);

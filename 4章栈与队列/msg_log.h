@@ -35,4 +35,14 @@ struct msg_log{
 }__attribute__((packed));
 
 
+
+void nstar_log_init(void);
+void nstar_log_print(void);
+
+void nstar_add_log(const char *name, unsigned char emergency, unsigned char type, 
+	unsigned char ops, unsigned char *logic_id);
+
+
+
+
 #endif

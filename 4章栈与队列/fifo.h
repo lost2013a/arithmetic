@@ -12,7 +12,7 @@
 #define FALSE 0
 #endif
 
-#define MAXSIZE 5 /* 存储空间初始分配量 */
+#define MAXSIZE 20 /* 存储空间初始分配量 */
 
 #define MAX_MSG_DATA_LEN LOG_LEN
 
@@ -47,6 +47,8 @@ QElemType* queue_get_tail(void);
 
 int queue_add(unsigned char *data, unsigned char len);
 void queue_visit(int (*parse_fun)(unsigned char*, unsigned char));
+
+
 
 
 #endif

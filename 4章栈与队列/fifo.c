@@ -6,13 +6,6 @@
 
 static SqQueue SQ;
 
-#if 1
-#define fifo_dbg printf
-#else
-#define fifo_dbg(...)
-#endif
-
-
 int InitQueue(SqQueue *Q)
 {
 	Q->front=0;
@@ -81,18 +74,12 @@ int queue_empty(void)
 void ext_init(unsigned char *buf, unsigned int len)
 {
 	int i;
-
-#if 1
 	int num= len/LOG_LEN;
-	
-	printf("old log numb=%d\n", num);
 	if(num && buf){
 		for(i=num-1; i>=0; i--){
 			queue_add(&buf[i*LOG_LEN], LOG_LEN);
 		}
 	}
-	printf("old add ok\n");
-#endif
 }
 
 
@@ -120,7 +107,6 @@ int queue_add(unsigned char *data, unsigned char len)
 }	
 
 
-extern int parse_log_str(unsigned char *buf, unsigned char len);
 
 void queue_visit(int (*parse_fun)(unsigned char*, unsigned char))
 { 

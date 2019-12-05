@@ -3,6 +3,7 @@
 
 #include "fifo.h" 
 
+
 #define DBG_FILE "nstar.log"
 #define DEV_LOG_BAK "nstar.log.bak"
 
@@ -11,8 +12,8 @@
 
 struct log_file{
 
-#define LOG_FILE_MAGIC 0x1122aabb
-#define LOG_FILE_VERSION 0x01
+#define LOG_FILE_MAGIC		0x1122aabb
+#define LOG_FILE_VERSION 	0x01
 
 	unsigned int magic;
 	unsigned char version;
@@ -25,11 +26,11 @@ struct log_file{
 
 
 
-
-void log_clear_breakfile(const char *file);
-int log_read_file(const char *file, unsigned char *p_dta, unsigned int maxlen);
+void log_clear_breakfile(const char *name);
+int log_read_file(const char *name, unsigned char *p_dta, unsigned int maxlen);
 void file_direct_write(const char *name, unsigned char *p_dta, unsigned int dtalen);
 
+unsigned char cal_crc_table(unsigned char *ptr, unsigned char len);
 
 
 #endif

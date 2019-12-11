@@ -3,7 +3,7 @@ CC=gcc
 CFLAGS= -Wall -O2
 LIBS=-lpthread -lm
 OBJ= test
-OBJS = 07my_program.c
+OBJS = 08_xsd.c
 $(OBJ):$(OBJS)
 	$(CC) -o $@ $(CFLAGS) $^ $(LIBS)
 

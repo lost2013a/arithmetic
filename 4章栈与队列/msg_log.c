@@ -5,6 +5,8 @@
 
 #include <time.h>
 #include <sys/time.h>
+#include <sys/stat.h>
+#include <dirent.h>
 
 #include "msg_log.h"
 #include "write_log.h"
@@ -88,6 +90,87 @@ static int parse_log_print(unsigned char *buf, unsigned char len)
 }
 
 
+
+#define MAX_USBFILE_LEN (100*MAXSIZE)
+static int parse_log_usbfile(unsigned char *buf, unsigned char len)
+{
+	if(resolver_buf){
+		struct msg_log *plog;
+		struct sys_time *ptime;
+		int len;
+		plog= (struct msg_log *)buf;
+		ptime= &plog->t;
+		if(MAX_USBFILE_LEN- resolver_len <= 0)
+			return 0;
+		len= snprintf((char*)resolver_buf+ resolver_len, MAX_USBFILE_LEN- resolver_len, "%02d/%02d/%02d\t%02d:%02d:%02d\t", ptime->year,  ptime->mon, ptime->day,
+			 ptime->hour, ptime->min, ptime->sec);
+		if(len > 0) 
+			resolver_len+= len;	
+		
+		if(MAX_USBFILE_LEN- resolver_len <= 0)
+			return 0;
+		len= snprintf((char*)resolver_buf+ resolver_len, MAX_USBFILE_LEN- resolver_len, "%s\t%d\t%d\t%d\t%02x%02x%02x%02x%02x%02x\n", plog->name, plog->emergency, plog->type, plog->ops,
+			plog->logic_id[0], plog->logic_id[1], plog->logic_id[2], plog->logic_id[3], plog->logic_id[4], plog->logic_id[5]);
+		if(len > 0) 
+			resolver_len+= len; 
+	}
+	return 0;
+}
+
+static unsigned int transform_log_usb(unsigned char *buf)
+{
+	const char *head_str="日期\t\t时间\t来源 \t \t覆盖区域";
+	unsigned int ret;
+	int len;
+	if(1 != init_ok)
+		return 0;
+	
+	LOG_UNLOCK();
+	if(NULL != buf){
+		resolver_buf= buf;
+		/*add head str*/
+		resolver_len= sprintf(resolver_buf, "%s\n\n", head_str);
+		queue_visit(parse_log_usbfile);
+	}
+	ret= resolver_len;
+	LOG_LOCK();
+	return ret;
+}
+
+
+
+//int mkdir(const char *path, mode_t mode);
+
+
+void nstar_wrtie_usbfile(const char *usbdir)
+{
+	struct sys_time ntime;
+	unsigned  char *filebuf; unsigned int file_len;
+	char path_buf[40];
+	filebuf= malloc(MAX_USBFILE_LEN);
+	if(filebuf == NULL){
+		printf("%s malloc failed\n", __func__);
+		return;
+	}
+	
+	read_time(&ntime);
+
+	if((opendir(usbdir)) == NULL){ 
+		printf("opendir %s error\n",usbdir); 
+		mkdir(usbdir, FILE_FLAG);
+	} 
+	snprintf(path_buf, 40, "%sNSTARLOG_20%02d%02d%02d",
+		usbdir, ntime.year, ntime.mon, ntime.day);
+
+	file_len= transform_log_usb(filebuf);
+	if(file_len > 0){
+		file_direct_write(path_buf, filebuf, file_len);
+	}
+	
+}
+
+
+
 static unsigned char add_new_log(const char *name, unsigned char emergency, unsigned char type, 
 	unsigned char ops, unsigned char *logic_id)
 {
@@ -124,9 +207,6 @@ void nstar_log_print(void)
 	queue_visit(parse_log_print);
 	LOG_LOCK();
 }
-
-
-
 
 static void nstar_sync_log(void)
 {
@@ -187,7 +267,7 @@ void nstar_log_init(void)
 	}
 	
 	queue_init();
-	
+
 	if(1 != _recover_log_file(DBG_FILE, (struct log_file*)tmpbuf)){
 		_recover_log_file(DEV_LOG_BAK, (struct log_file*)tmpbuf);
 	}
@@ -223,10 +303,9 @@ void creat_new_thread(void)
 
 void nstar_log_sver(void *parm)
 {
-	
-
 	nstar_log_init();
 	nstar_log_print();
+	nstar_wrtie_usbfile("log/");
 	creat_new_thread();
 	while(1){
 		sleep(1);

@@ -3,6 +3,7 @@
 
 #include "fifo.h" 
 
+#define FILE_FLAG 0X755
 
 #define DBG_FILE "nstar.log"
 #define DEV_LOG_BAK "nstar.log.bak"

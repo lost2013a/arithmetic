@@ -5,7 +5,7 @@
 
 #include "write_log.h"
 
-#define FILE_FLAG 0X665
+
 
 void log_clear_breakfile(const char *name)
 {
@@ -33,7 +33,7 @@ int log_read_file(const char *name, unsigned char *p_dta, unsigned int maxlen)
 void file_direct_write(const char *name, unsigned char *p_dta, unsigned int dtalen)
 {  	
 	int fd=-1;
-	fd= open(name, O_RDWR| O_CREAT, FILE_FLAG);  
+	fd= open(name, O_RDWR| O_CREAT| O_TRUNC, FILE_FLAG);  
 	if(fd < 0){
 		printf("err: %s file open failed\n", name);
 		return;

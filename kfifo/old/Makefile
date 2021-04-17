@@ -1,9 +1,9 @@
 .PHONY:clean
 CC=gcc
 CFLAGS= -Wall -O2
-LIBS=-lpthread -lm
+LIBS=-lpthread
 OBJ= test
-OBJS = 09table.c
+OBJS = kfifo.c main.c
 $(OBJ):$(OBJS)
 	$(CC) -o $@ $(CFLAGS) $^ $(LIBS)
 

@@ -4,12 +4,12 @@
 
 #define BUCKETCOUNT 20
 
-
+#define LOGIDLEN 6
 
 struct hashEntry
 {
     unsigned short key;
-    char* value;
+    unsigned char* value;
     struct hashEntry* next;
 };
 
@@ -17,24 +17,21 @@ typedef struct hashEntry entry;
 
 struct hashTable
 {
-    entry bucket[BUCKETCOUNT];  //先默认定义16个桶
+    entry bucket[BUCKETCOUNT];  
 };
 
 typedef struct hashTable table;
 
-//在堆上分配足以保存str的内存
-//并拷贝str内容到新分配位置
-char* strDup(const char* str)
-{
-    int len;
-    char* ret;
-    if (str == NULL)return NULL;
 
-    len = strlen(str);
-    ret = (char*)malloc(len + 1);
+unsigned char* strDup(const unsigned char* str)
+{
+    int len= LOGIDLEN;
+    unsigned char* ret;
+    if (str == NULL)
+		return NULL;
+    ret = (unsigned char*)malloc(len);
     if (ret != NULL) {
         memcpy(ret , str , len);
-        ret[len] = '\0';
     }
     return ret;
 }
@@ -78,7 +75,7 @@ void freeHashTable(table* t)
 
 
 //向哈希表中插入数据
-int insertEntry(table* t , unsigned short key , const char* value)
+int insertEntry(table* t , unsigned short key , const unsigned char* value)
 {
     int index , vlen1 , vlen2;
     entry* e , *ep;
@@ -94,22 +91,13 @@ int insertEntry(table* t , unsigned short key , const char* value)
     }
     else {
         e = ep = &(t->bucket[index]);
-        while (e != NULL) { //先从已有的找
-            if (strcmp(e->value , value) == 0) {
-                //找到key所在，替换值
-                vlen1 = strlen(value);
-                vlen2 = strlen(e->value);
-                if (vlen1 > vlen2) {
-                    free(e->value);
-                    e->value = (char*)malloc(vlen1 + 1);
-                }
-                memcpy(e->value , value , vlen1 + 1);
-                return index;   //插入完成了
+        while (e != NULL) { 
+            if (memcmp(e->value , value, LOGIDLEN) == 0) {
+                return index;   //已存在
             }
             ep = e;
             e = e->next;
-        } // end while(e...
-
+        } 
         //没有在当前桶中找到
         //创建条目加入
         e = (entry*)malloc(sizeof (entry));
@@ -123,7 +111,7 @@ int insertEntry(table* t , unsigned short key , const char* value)
 
 //在哈希表中查找key对应的value
 //找到了返回value的地址，没找到返回NULL
-const char* findValueByKey(const table* t , unsigned short key)
+const unsigned char* findValueByKey(const table* t , unsigned short key)
 {
     int index;
     const entry* e;
@@ -205,7 +193,8 @@ void printTable(table* t)
         while (e->key != 0) {
 			if(old != e->key)
 			{
-            	printf("\t%d\t=\t%s\n" , e->key , e->value);
+            	printf("\t%d\t=\t%02x%02x%02x%02x%02x%02x\n" , e->key , e->value[0],
+					e->value[1],e->value[2],e->value[3],e->value[4],e->value[5]);
 				old= e->key;
 			}
             if (e->next == NULL)break;
@@ -214,61 +203,48 @@ void printTable(table* t)
     }
 }
 
-//void visitTable(table* t)
-//{
-//    int i;
-//    entry* e;
-//    if (t == NULL)return;
-//    for (i = 0; i<BUCKETCOUNT; ++i) {
-//        e = &(t->bucket[i]);
-//        while (e->key != 0) {
-//            printf("\t%d\t=\t%s\n" , e->key , e->value);
-//            if (e->next == NULL)break;
-//            e = e->next;
-//        }
-//    }
-//}
 
-
-
+unsigned char buf[6]={1,2,3,4,5,6};
 int main()
 {
-    table t;
+    table t;entry* e ;
     initHashTable(&t);
 
-    insertEntry(&t , 0 , "0");
-    insertEntry(&t , 6502 , "6502");
-    insertEntry(&t , 6503 , "6503");
-	insertEntry(&t , 3503 , "3503");
-	insertEntry(&t , 3503 , "3502");
-    insertEntry(&t , 6502 , "6502+1");
-    insertEntry(&t , 6505 , "6505");
- 
+    insertEntry(&t , 6502 , buf);
+	insertEntry(&t , 6503 , buf);
 
-    entry* e = removeEntry(&t , 6502);
+	buf[5]++;
+	insertEntry(&t , 6504 , buf);
+
+	buf[5]++;
+	insertEntry(&t , 6504 , buf);
+
+	buf[5]++;
+	insertEntry(&t , 6504 , buf);
+
+    e = removeEntry(&t , 6504);
     if (e != NULL) {
-        puts("找到后要释放");
+        printf("找到后要释放\n");
 		e->key=0;
         free(e->value);
         free(e);
         e = NULL;
     }
 
-    printTable(&t);
-
 	
+    printTable(&t);
     unsigned short keys[4] = { 6501 , 6502, 6509 , 0 };
     for (int i = 0; i < 4; ++i) {
-        const char* value = findValueByKey(&t , keys[i]);
+        const unsigned char* value = findValueByKey(&t , keys[i]);
         if (value != NULL) {
-            printf("find %d\t=\t%s\n" ,keys[i], value);
+            printf("find %d\t=\t%02x%02x%02x%02x%02x%02x\n\n" , keys[i] , value[0],
+					value[1], value[2], value[3], value[4], value[5]);
         }
         else {
             printf("not found %d\n",keys[i]);
         }
     }
 
-	
     freeHashTable(&t);
     return 0;
 }

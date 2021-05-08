@@ -517,6 +517,7 @@ __kfifo_uint_must_check_helper( \
  * This macro copies the given values buffer into the fifo and returns the
  * number of copied elements.
  */
+ #if 0
 #define	kfifo_in_spinlocked(fifo, buf, n, lock) \
 ({ \
 	unsigned long __flags; \
@@ -530,7 +531,7 @@ __kfifo_uint_must_check_helper( \
 /* alias for kfifo_in_spinlocked, will be removed in a future release */
 #define kfifo_in_locked(fifo, buf, n, lock) \
 		kfifo_in_spinlocked(fifo, buf, n, lock)
-
+#endif
 /**
  * kfifo_out - get data from the fifo
  * @fifo: address of the fifo to be used

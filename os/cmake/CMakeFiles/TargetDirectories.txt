@@ -1,0 +1,3 @@
+/mnt/hgfs/share/ctest/os/cmake/CMakeFiles/rebuild_cache.dir
+/mnt/hgfs/share/ctest/os/cmake/CMakeFiles/hello.dir
+/mnt/hgfs/share/ctest/os/cmake/CMakeFiles/edit_cache.dir

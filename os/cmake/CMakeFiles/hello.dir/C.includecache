@@ -1,0 +1,16 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/mnt/hgfs/share/ctest/os/cmake/main.c
+stdio.h
+-
+main.h
+/mnt/hgfs/share/ctest/os/cmake/main.h
+
+/mnt/hgfs/share/ctest/os/cmake/main.h
+

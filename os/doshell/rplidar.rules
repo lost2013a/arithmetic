@@ -1,0 +1,4 @@
+KERNEL=="ttyUSB*", ATTRS{idVendor}=="067b", ATTRS{idProduct}=="2303", SYMLINK+="rplidar"  
+
+
+

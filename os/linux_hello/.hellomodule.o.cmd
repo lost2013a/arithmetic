@@ -1,0 +1,1 @@
+cmd_/mnt/hgfs/share/ctest/os/linux_hello/hellomodule.o := ld -m elf_x86_64  -z max-page-size=0x200000    -r -o /mnt/hgfs/share/ctest/os/linux_hello/hellomodule.o /mnt/hgfs/share/ctest/os/linux_hello/hello.o

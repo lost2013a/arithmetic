@@ -1,4 +1,4 @@
-#include <stdlib.h>
+
 #include <stdio.h>
 #include <pthread.h>
 #include "../kfifo.h"
@@ -9,6 +9,11 @@
 DECLARE_KFIFO(g_fifobuf, unsigned char, 1024/*size必须是2的倍数*/); 
 #define gbuf_in(p_data, len) kfifo_in(&g_fifobuf, p_data, len)
 #define gbuf_out(p_data, len) kfifo_out(&g_fifobuf, p_data, len)
+/*
+
+
+*/
+
 
 // DEFINE_KFIFO(g_fifobuf, int, 16);
 #if 0
@@ -52,6 +57,8 @@ void* write_thread(void* arg) {
 #endif
 
 #if 0
+
+
 void* read_thread(void* arg) {
     printf("read...\n");
     int x = 0;

@@ -13,7 +13,7 @@
 // #include <linux/kfifo.h>
 
 #include <stdlib.h>
-#include <memory.h>
+//#include <memory.h>
 #include "kfifo.h"
 
 

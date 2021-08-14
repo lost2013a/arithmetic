@@ -1,11 +1,10 @@
-#define _GNU_SOURCE
-#include <ucontext.h>
+//#define _GNU_SOURCE
+//#include <ucontext.h>
 #include <stdio.h>
-#include <execinfo.h>
-#include <signal.h>
+//#include <execinfo.h>
 #include <stdlib.h>
 
-
+#include <signal.h>
 static void _signal_handler(int sig,siginfo_t *info,void *ctx)
 {
 #include <ucontext.h>
@@ -27,7 +26,7 @@ static void _signal_handler(int sig,siginfo_t *info,void *ctx)
     free(p_strs);
 }
 
-void set_hexdump(void) {
+void os_set_coredump(void) {
 	struct sigaction action;
 	sigemptyset(&action.sa_mask);
 	action.sa_sigaction = _signal_handler;
@@ -54,11 +53,7 @@ static void test1(int*p)
 int main(int argc,char*argv[])
 {
 	int *p=0x12345678;
-	struct sigaction action;
-	sigemptyset(&action.sa_mask);
-	action.sa_sigaction = _signal_handler;
-	action.sa_flags = SA_SIGINFO;
-	sigaction(SIGSEGV,&action,NULL);
+	os_set_coredump();
 	test1(p);
 	return 0;
 }

@@ -6,6 +6,7 @@ struct kfifo {
 	unsigned int in;	/* data is added at offset (in % size) */
 	unsigned int out;	/* data is extracted from off. (out % size) */
     unsigned int size;	/* the size of the allocated buffer */
+    unsigned int csize;	/* the size of the allocated buffer */
     void *buffer;	/* the buffer holding the data */
 };
 
@@ -57,12 +58,13 @@ static inline unsigned int __kfifo_off(struct kfifo *fifo, unsigned int off)
 }
 
 /*初始化1： 推荐， 必须是2的幂树*/
-#define DECLARE_KFIFO(fifo, size) \
-    static unsigned char _##fifo_buf[((size < 2) || (size & (size - 1))) ? -1 : size]; \
+#define DECLARE_KFIFO(fifo, type, size) \
+    static type _##fifo_buf[((size < 2) || (size & (size - 1))) ? -1 : size]; \
     struct kfifo fifo = {\
         0, \
         0, \
         size, \
+        sizeof(type), \
         _##fifo_buf, \
     } 
 /*初始化2*/    

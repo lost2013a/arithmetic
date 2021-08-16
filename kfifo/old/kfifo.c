@@ -38,7 +38,13 @@ static inline void __kfifo_in_data(struct kfifo *fifo,
 {
 	unsigned int l;
     unsigned int off = __kfifo_off(fifo, fifo->in);
+    unsigned int csize = fifo->csize;
 	l = min(len, fifo->size - off);
+    if(csize != 1) {
+        l *= csize;
+        len *= csize;
+        off *= csize;
+    }
 	memcpy(fifo->buffer + off, from, l);
 	/* then put the rest (if any) at the beginning of the buffer */
 	memcpy(fifo->buffer, (unsigned char*)from + l, len - l);
@@ -49,7 +55,13 @@ static inline void __kfifo_out_data(struct kfifo *fifo,
 {
 	unsigned int l;
 	unsigned int off = __kfifo_off(fifo, fifo->out);
+    unsigned int csize = fifo->csize;
 	l = min(len, fifo->size - off);
+    if(csize != 1) {
+        l *= csize;
+        len *= csize;
+        off *= csize;
+    }
 	memcpy(to, fifo->buffer + off, l);
 	memcpy((unsigned char*)to + l, fifo->buffer, len - l);
 }

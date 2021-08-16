@@ -6,7 +6,7 @@
 #include <string.h>
 
 
-DECLARE_KFIFO(g_fifobuf, unsigned char, 1024/*size必须是2的倍数*/); 
+DEFINE_KFIFO(g_fifobuf, unsigned char, 1024/*size必须是2的倍数*/); 
 #define gbuf_in(p_data, len) kfifo_in(&g_fifobuf, p_data, len)
 #define gbuf_out(p_data, len) kfifo_out(&g_fifobuf, p_data, len)
 /*
@@ -77,7 +77,7 @@ void* read_thread(void* arg) {
     while(1) {
         unsigned int len = gbuf_out(x, 100);
         if (len == strlen(str)) {
-            printf("read ok %s\n", (char*)x);
+            //printf("read ok %s\n", (char*)x);
         }else if(len != 0) {
             printf("read err %d\n", len);
             
@@ -103,6 +103,7 @@ void test1(void) {
 
 int main() {
     INIT_KFIFO(g_fifobuf);
+    
     int n = kfifo_avail(&g_fifobuf);
     printf("hello kfifo, avail: %d\n", n);
     test1();

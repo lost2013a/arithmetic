@@ -1,138 +1,78 @@
 #include "kfifo.h"
 #include <string.h>
 #include <stdio.h>
- 
+
+#ifdef __GNUC__
+	#define smp_wmb __sync_synchronize
+#else
+    #define smp_wmb() 
+#endif
 #define min(a,b) ((a)<(b)?(a):(b))
- 
-/* is x a power of 2? */
 #define is_power_of_2(x)	((x) != 0 && (((x) & ((x) - 1)) == 0))
- 
-/**
- * kfifo_init - initialize a FIFO using a preallocated buffer
- * @fifo: the fifo to assign the buffer
- * @buffer: the preallocated buffer to be used.
- * @size: the size of the internal buffer, this has to be a power of 2.
- *
- */
+
+/*
+要点：
+1. 从内核lib/kfifo移植，只适合单生产者，单消费者模型
+2. buff空间只能是2的幂数
+3. 不使用lenth，消费者只修改out，生产者只修改in。
+4. in和out增加的时候，不对buf->size取余，而是在整个unsigned int空间增加。方便判断buff空和满。
+5. 因为第4点，in和out转化成buf的上的idx时，需要对buf->size取余，因为buf->size是二的指数倍，可转换成
+&(buf->size - 1)，调高效率。
+
+*/
+
 void kfifo_init(struct kfifo *fifo, void *buffer, unsigned int size)
 {
-	/* TODO: size must be a power of 2? */
-
-    printf("size is %d, %d\n", size, size & (size-1) );
-    if(size & (size-1)) {
-        printf("%s err\n", __func__);
+    printf("kfifo init size: %d\n", size);
+    if(is_power_of_2(size) != 0) {
+        printf("kfifo size err\n");
+        return;
     }
-    
 	fifo->buffer = buffer;
 	fifo->size = size;
- 
 	kfifo_reset(fifo);
 }
  
 static inline void __kfifo_in_data(struct kfifo *fifo,
-		const void *from, unsigned int len, unsigned int off)
+		const void *from, unsigned int len)
 {
 	unsigned int l;
- 
-	/*
-	 * Ensure that we sample the fifo->out index -before- we
-	 * start putting bytes into the kfifo.
-	 */
-    /* 确保放数据到kfifo前先取out指针的值*/
-	off = __kfifo_off(fifo, fifo->in + off);
- 
-	/* first put the data starting from fifo->in to buffer end */
-    /* kfifo可写空间和预期写入空间的最小值 */
+    unsigned int off = __kfifo_off(fifo, fifo->in);
 	l = min(len, fifo->size - off);
 	memcpy(fifo->buffer + off, from, l);
- 
 	/* then put the rest (if any) at the beginning of the buffer */
-	memcpy(fifo->buffer, from + l, len - l);
+	memcpy(fifo->buffer, (unsigned char*)from + l, len - l);
 }
  
 static inline void __kfifo_out_data(struct kfifo *fifo,
-		void *to, unsigned int len, unsigned int off)
+		void *to, unsigned int len)
 {
 	unsigned int l;
- 
-	/*
-	 * Ensure that we sample the fifo->in index -before- we
-	 * start removing bytes from the kfifo.
-	 */
- 
-	off = __kfifo_off(fifo, fifo->out + off);
- 
-	/* first get the data from fifo->out until the end of the buffer */
+	unsigned int off = __kfifo_off(fifo, fifo->out);
 	l = min(len, fifo->size - off);
 	memcpy(to, fifo->buffer + off, l);
- 
-	/* then get the rest (if any) from the beginning of the buffer */
-	memcpy(to + l, fifo->buffer, len - l);
+	memcpy((unsigned char*)to + l, fifo->buffer, len - l);
 }
- 
-unsigned int __kfifo_in_n(struct kfifo *fifo,
-	const void *from, unsigned int len, unsigned int recsize)
+
+unsigned int kfifo_in(struct kfifo *fifo, const void *from, unsigned int len)
 {
-	if (kfifo_avail(fifo) < len + recsize)
-		return len + 1;
- 
-	__kfifo_in_data(fifo, from, len, recsize);
-	return 0;
-}
- 
- 
-/**
- * kfifo_in - puts some data into the FIFO
- * @fifo: the fifo to be used.
- * @from: the data to be added.
- * @len: the length of the data to be added.
- *
- * This function copies at most @len bytes from the @from buffer into
- * the FIFO depending on the free space, and returns the number of
- * bytes copied.
- *
- * Note that with only one concurrent reader and one concurrent
- * writer, you don't need extra locking to use these functions.
- */
-unsigned int kfifo_in(struct kfifo *fifo, const void *from,
-				unsigned int len)
-{
-	len = min(kfifo_avail(fifo), len);
- 
-	__kfifo_in_data(fifo, from, len, 0);
+    unsigned int l = kfifo_avail(fifo);
+    if (len > l)
+		len = l;
+	__kfifo_in_data(fifo, from, len);
+    smp_wmb(); /*多核CPU防止乱序，确保in指针的修改在数据拷贝之后*/
 	__kfifo_add_in(fifo, len);
 	return len;
 }
-unsigned int __kfifo_out_n(struct kfifo *fifo,
-	void *to, unsigned int len, unsigned int recsize)
-{
-	if (kfifo_len(fifo) < len + recsize)
-		return len;
- 
-	__kfifo_out_data(fifo, to, len, recsize);
-	__kfifo_add_out(fifo, len + recsize);
-	return 0;
-}
- 
-/**
- * kfifo_out - gets some data from the FIFO
- * @fifo: the fifo to be used.
- * @to: where the data must be copied.
- * @len: the size of the destination buffer.
- *
- * This function copies at most @len bytes from the FIFO into the
- * @to buffer and returns the number of copied bytes.
- *
- * Note that with only one concurrent reader and one concurrent
- * writer, you don't need extra locking to use these functions.
- */
+                
 unsigned int kfifo_out(struct kfifo *fifo, void *to, unsigned int len)
 {
-	len = min(kfifo_len(fifo), len);
- 
-	__kfifo_out_data(fifo, to, len, 0);
+	unsigned int l = kfifo_len(fifo);
+    if (len > l)
+		len = l;
+	__kfifo_out_data(fifo, to, len);
+    smp_wmb();
 	__kfifo_add_out(fifo, len);
- 
 	return len;
 }
 

@@ -4,24 +4,35 @@
 #include <pthread.h>
 
 
-DECLARE_KFIFO(pkfifo, unsigned short, 1024*1024);
+DECLARE_KFIFO(pkfifo, unsigned char, 1024*1024);
+
+#define	kfifo_put(fifo, val) \
+({ \
+	unsigned int __ret = !kfifo_is_full(fifo); \
+	if (__ret) { \
+		(int*)fifo->buffer[fifo->in & (fifo->size - 1)] = (int)val;\
+		fifo->in++; \
+	} \
+	__ret; \
+})
+
 
 void *test_in(void* parm) {
-    static int i = 0;
+    static int a[1000] = {0};
+    int i;
     int wlen;
-    for (i = 0; i < 1000*1000*10;){
-        wlen = kfifo_in(&pkfifo, &i, 1);
-        if(wlen == 1) {
-            i++;
+    for (i = 0; i < 1000*1000*1;){
+        //wlen = kfifo_in(&pkfifo, &i, 1);
+        wlen = kfifo_put(&pkfifo, i);
+        if(wlen) {
+            i+=wlen;
         }
     }
     return 0;
 }
 
 static int out_idx = 0;
-
-
-static void print_buf(unsigned short *buf, unsigned int len) {
+static void print_buf(unsigned char *buf, unsigned int len) {
     static int last_nb = -1;
     while(len--) {
         int nb = *buf++;
@@ -34,10 +45,10 @@ static void print_buf(unsigned short *buf, unsigned int len) {
 }
 
 void *test_out(void* parm) {
-    unsigned short buf[4000];
+    unsigned char buf[4000];
     int rlen;
     while(1) {
-        rlen = kfifo_out(&pkfifo, buf, 100);
+        rlen = kfifo_out(&pkfifo, buf, 4000);
         if(rlen > 0) {
             out_idx+=rlen;
             print_buf(buf, rlen);
@@ -46,12 +57,28 @@ void *test_out(void* parm) {
     return 0;
 }
 
+#include <sys/times.h>
+
+/*系统的时间片大小，一般是10MS 或者 1MS*/
+#define TICKS_PER_SEC 10 
+
+static long getNowTime(void)
+{
+    long t = times(0);
+	return t;
+}
+
+
 int main(int argc,char *argv[])
 {
     pthread_t ids_r, ids_w;
+    long t0, t1;
+    t0 = getNowTime();
     pthread_create(&ids_w, NULL, test_in, NULL);
     pthread_create(&ids_r, NULL, test_out, NULL);
 	pthread_join(ids_w, NULL);
+    t1 = getNowTime();
+    printf("t is %d\n", t1 - t0);
     usleep(1000*100);
     printf("out_idx is %d\n", out_idx);
 	return 0;

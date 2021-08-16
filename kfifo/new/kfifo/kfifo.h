@@ -56,7 +56,7 @@ struct __kfifo {
 	unsigned int	out;
 	unsigned int	mask;
 	unsigned int	esize;
-	void		*data;
+	void            *data;
 };
 
 #define __STRUCT_KFIFO_COMMON(datatype, recsize, ptrtype) \

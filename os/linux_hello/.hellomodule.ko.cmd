@@ -1,1 +1,0 @@
-cmd_/mnt/hgfs/share/ctest/os/linux_hello/hellomodule.ko := ld -r -m elf_x86_64  -z max-page-size=0x200000  --build-id  -T ./scripts/module-common.lds -o /mnt/hgfs/share/ctest/os/linux_hello/hellomodule.ko /mnt/hgfs/share/ctest/os/linux_hello/hellomodule.o /mnt/hgfs/share/ctest/os/linux_hello/hellomodule.mod.o;  true

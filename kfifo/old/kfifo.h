@@ -1,6 +1,11 @@
 #ifndef _KFIFO_H
 #define _KFIFO_H
 
+#ifdef __GNUC__
+	#define smp_wmb __sync_synchronize
+#else
+    #define smp_wmb() 
+#endif
 
 struct kfifo {
 	unsigned int in;	/* data is added at offset (in % size) */
@@ -56,6 +61,18 @@ static inline unsigned int __kfifo_off(struct kfifo *fifo, unsigned int off)
 {
 	return off & (fifo->size - 1);
 }
+
+#define	kfifo_put(rfifo, type, val) \
+({ \
+    struct kfifo* p = rfifo; \
+	unsigned int __ret = !kfifo_is_full(p); \
+	if (__ret) { \
+		*((type*)p->buffer + (p->in & (p->size - 1))) = val; \
+		p->in++; \
+		smp_wmb(); \
+	} \
+	__ret; \
+})
 
 /*初始化1： 推荐， 必须是2的幂树*/
 #define DECLARE_KFIFO(fifo, type, size) \

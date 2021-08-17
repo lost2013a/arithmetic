@@ -1,29 +1,27 @@
 #include<stdio.h>
 #include<stdlib.h>
-#include "kfifo.h"
+#include<unistd.h>
 #include <pthread.h>
+#include "kfifo.h"
+
+typedef unsigned int element;
+//typedef int element;
+//typedef unsigned short element;
+//typedef short element;
+//typedef unsigned char element;
+//typedef char element;
 
 
-DECLARE_KFIFO(pkfifo, unsigned char, 1024*1024);
 
-#define	kfifo_put(fifo, val) \
-({ \
-	unsigned int __ret = !kfifo_is_full(fifo); \
-	if (__ret) { \
-		(int*)fifo->buffer[fifo->in & (fifo->size - 1)] = (int)val;\
-		fifo->in++; \
-	} \
-	__ret; \
-})
-
+DECLARE_KFIFO(pkfifo, element, 1024*1024);
 
 void *test_in(void* parm) {
-    static int a[1000] = {0};
+    //static int a[1000] = {0};
     int i;
     int wlen;
-    for (i = 0; i < 1000*1000*1;){
-        //wlen = kfifo_in(&pkfifo, &i, 1);
-        wlen = kfifo_put(&pkfifo, i);
+    for (i = 0; i < 1000*1000*100;){
+        wlen = kfifo_in(&pkfifo, &i, 1);
+        //wlen = kfifo_put(&pkfifo, element,  i);
         if(wlen) {
             i+=wlen;
         }
@@ -32,7 +30,7 @@ void *test_in(void* parm) {
 }
 
 static int out_idx = 0;
-static void print_buf(unsigned char *buf, unsigned int len) {
+static void print_buf(element *buf, unsigned int len) {
     static int last_nb = -1;
     while(len--) {
         int nb = *buf++;
@@ -45,7 +43,7 @@ static void print_buf(unsigned char *buf, unsigned int len) {
 }
 
 void *test_out(void* parm) {
-    unsigned char buf[4000];
+    element buf[4000];
     int rlen;
     while(1) {
         rlen = kfifo_out(&pkfifo, buf, 4000);
@@ -78,7 +76,7 @@ int main(int argc,char *argv[])
     pthread_create(&ids_r, NULL, test_out, NULL);
 	pthread_join(ids_w, NULL);
     t1 = getNowTime();
-    printf("t is %d\n", t1 - t0);
+    printf("t is %ld\n", t1 - t0);
     usleep(1000*100);
     printf("out_idx is %d\n", out_idx);
 	return 0;

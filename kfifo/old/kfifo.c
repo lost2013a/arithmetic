@@ -1,15 +1,3 @@
-#include "kfifo.h"
-#include <string.h>
-#include <stdio.h>
-
-#ifdef __GNUC__
-	#define smp_wmb __sync_synchronize
-#else
-    #define smp_wmb() 
-#endif
-#define min(a,b) ((a)<(b)?(a):(b))
-#define is_power_of_2(x)	((x) != 0 && (((x) & ((x) - 1)) == 0))
-
 /*
 要点：
 1. 从内核lib/kfifo移植，只适合单生产者，单消费者模型
@@ -20,6 +8,13 @@
 &(buf->size - 1)，调高效率。
 
 */
+
+#include <string.h>
+#include <stdio.h>
+#include "kfifo.h"
+
+#define min(a,b) ((a)<(b)?(a):(b))
+#define is_power_of_2(x)	((x) != 0 && (((x) & ((x) - 1)) == 0))
 
 void kfifo_init(struct kfifo *fifo, void *buffer, unsigned int size)
 {
